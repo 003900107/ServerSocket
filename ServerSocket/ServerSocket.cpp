@@ -34,7 +34,7 @@ CServerSocketApp::CServerSocketApp()
 {
 	// TODO: add construction code here,
 	// Place all significant initialization in InitInstance
-	m_nLinkMode = 0; // server
+	m_nLinkMode = 0; // "0" server; "1" client
 }
 
 /////////////////////////////////////////////////////////////////////////////

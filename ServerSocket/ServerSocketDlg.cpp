@@ -65,6 +65,7 @@ END_MESSAGE_MAP()
 
 CServerSocketDlg::CServerSocketDlg(CWnd* pParent /*=NULL*/)
 	: CDialog(CServerSocketDlg::IDD, pParent)
+	, m_nMessageType(0)
 {
 	//{{AFX_DATA_INIT(CServerSocketDlg)
 	m_strPort = _T("2000");
@@ -84,6 +85,8 @@ void CServerSocketDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_SVR_PORT, m_strPort);
 	DDX_Radio(pDX, IDC_TCP, m_nSockType);
 	//}}AFX_DATA_MAP
+	DDX_Radio(pDX, IDC_ASC, m_nMessageType);
+	DDX_Control(pDX, IDC_COMBO1, m_ctlIpList);
 }
 
 BEGIN_MESSAGE_MAP(CServerSocketDlg, CDialog)
@@ -141,13 +144,22 @@ void CServerSocketDlg::PickNextAvailable()
 bool CServerSocketDlg::StartServer()
 {
 	bool bSuccess = false;
+
+	//get select ip
+	m_ctlIpList.GetWindowTextA(m_strIp);
+
 	if (m_pCurServer != NULL)
 	{
 		if (m_nSockType == SOCK_TCP)
 		{
 			// no smart addressing - we use connection oriented
 			m_pCurServer->SetSmartAddressing( false );
-			bSuccess = m_pCurServer->CreateSocket( m_strPort, AF_INET, SOCK_STREAM, 0); // TCP
+
+			if(m_strIp.IsEmpty())
+				bSuccess = m_pCurServer->CreateSocket( m_strPort, AF_INET, SOCK_STREAM, 0); // TCP
+			else
+				bSuccess = m_pCurServer->CreateSocketEx(m_strIp, m_strPort, AF_INET, SOCK_STREAM, 0);
+
 		}
 		else
 		{
@@ -157,20 +169,31 @@ bool CServerSocketDlg::StartServer()
 
 		if (bSuccess && m_pCurServer->WatchComm())
 		{
+			//保存收发数据的类型标识
+			m_pCurServer->m_nMessageType = m_nMessageType;
+
 			GetDlgItem(IDC_BTN_SEND)->EnableWindow( TRUE );
 			GetDlgItem(IDC_BTN_STOP)->EnableWindow( TRUE );
 			NextDlgCtrl();
 			GetDlgItem(IDC_BTN_START)->EnableWindow( FALSE );
 			GetDlgItem(IDC_TCP)->EnableWindow( FALSE );
 			GetDlgItem(IDC_UDP)->EnableWindow( FALSE );
-			CString strServer, strAddr;
+			GetDlgItem(IDC_ASC)->EnableWindow( FALSE );
+			GetDlgItem(IDC_HEX)->EnableWindow( FALSE );
+
+			CString strServer;
 			m_pCurServer->GetLocalName( strServer.GetBuffer(256), 256);
 			strServer.ReleaseBuffer();
-			m_pCurServer->GetLocalAddress( strAddr.GetBuffer(256), 256);
-			strAddr.ReleaseBuffer();
+			if(m_strIp.IsEmpty())
+			{
+				m_pCurServer->GetLocalAddress( m_strIp.GetBuffer(256), 256);
+				m_strIp.ReleaseBuffer();
+			}
+
 			CString strMsg = _T("Server: ") + strServer;
-					strMsg += _T(", @Address: ") + strAddr;
-					strMsg += _T(" is running on port ") + m_strPort + CString("\r\n");
+					strMsg += _T(", @Address: ") + m_strIp;
+					strMsg += _T(" is running on port ") + m_strPort + m_strPort 
+						+ CString("\r\n");
 			m_pCurServer->AppendMessage( strMsg );
 		}
 	}
@@ -220,7 +243,33 @@ BOOL CServerSocketDlg::OnInitDialog()
 		m_SocketManager[i].SetServerState( true );	// run as server
 	}
 
+	//init m_pCurServer
 	PickNextAvailable();
+
+	//init serverIp list
+	struct in_addr m_pLocalIp[16];	//local IP list
+	BYTE ipNum;
+	
+	/*
+	//test
+	char test[10]={0x01, 0x02, 0x03, 0x11, 0x22, 0xFF};
+	char test2[10];
+	CString str;
+	if(m_pCurServer != NULL)
+	{
+		str = m_pCurServer->BinToString(test, 10);
+		m_pCurServer->StringToBin(str, test2, 10);
+	}
+	*/
+
+	if(m_pCurServer != NULL)
+	{
+		ipNum = m_pCurServer->GetLocalAllAddress(m_pLocalIp);
+		for(BYTE i=0; i<ipNum; i++)
+		{
+			m_ctlIpList.AddString( inet_ntoa(*(m_pLocalIp+i)) );
+		}
+	}
 
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }
@@ -328,6 +377,8 @@ void CServerSocketDlg::OnBtnStop()
 		GetDlgItem(IDC_BTN_STOP)->EnableWindow( FALSE );
 		GetDlgItem(IDC_TCP)->EnableWindow( TRUE );
 		GetDlgItem(IDC_UDP)->EnableWindow( TRUE );
+		GetDlgItem(IDC_ASC)->EnableWindow( TRUE );
+		GetDlgItem(IDC_HEX)->EnableWindow( TRUE );
 	}
 }
 

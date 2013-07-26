@@ -23,6 +23,7 @@
 #ifndef BUFFER_SIZE
 #define BUFFER_SIZE     MAX_PATH
 #endif
+
 #define HOSTNAME_SIZE   MAX_PATH
 #define STRING_LENGTH   40
 

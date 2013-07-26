@@ -9,6 +9,7 @@
 #endif // _MSC_VER > 1000
 
 #include "SocketManager.h"
+#include "afxwin.h"
 
 #define MAX_CONNECTION		10
 
@@ -61,6 +62,10 @@ protected:
 	//}}AFX_MSG
 	afx_msg LRESULT OnUpdateConnection(WPARAM wParam, LPARAM lParam);
 	DECLARE_MESSAGE_MAP()
+public:
+	int m_nMessageType;
+	CComboBox m_ctlIpList;
+	CString m_strIp;
 };
 
 //{{AFX_INSERT_LOCATION}}
